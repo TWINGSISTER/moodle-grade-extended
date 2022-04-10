@@ -1,0 +1,1 @@
+This release adds the Export for all the quizzes results in a course with lots of information. Good for providing evidence to parents. Requires the plugin Moodle Quiz Archive (see a fork at) https://github.com/TWINGSISTER/moodle-quiz_archive 
