@@ -28,7 +28,8 @@ jobs:
       PLUGIN: grade_export_extended #moodle\grade\export\extended
       CURL: curl -s
       ENDPOINT: https://moodle.org/webservice/rest/server.php
-      TOKEN: ${{ secrets.MOODLE_ORG_TOKEN }}
+      #TOKEN: ${{ secrets.MOODLE_ORG_TOKEN }}
+      TOKEN: fca693a8cc0cea4ebad92cc65742b56a
       FUNCTION: local_plugins_add_version
 
     steps:
