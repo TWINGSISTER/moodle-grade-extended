@@ -1,0 +1,6 @@
+export.php takes care to fetch parameters and creates the button for export. 
+grade_export_extendeded wites a file and contains the logic to access the marks.
+The marks are provided by Moodle internals libs that takes care to do the MySQL calls
+everything is encapsuated in graded_users_iterator class in moodle\grade\lib.php
+Also interesting  moodle\grade\report\singleview\classes\local\screen
+

@@ -15,32 +15,24 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Privacy Subsystem implementation for gradeexport_extended.
+ * Grade export event.
  *
  * @package    gradeexport_extended
- * @copyright  2018 Sara Arjona <sara@moodle.com>
+ * @copyright  2016 Zane Karl <zkarl@oid.ucla.edu>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace gradeexport_extended\privacy;
+namespace gradeexport_extended\event;
 
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Privacy Subsystem for gradeexport_extended implementing null_provider.
+ * Grade export event class.
  *
- * @copyright  2018 Sara Arjona <sara@moodle.com>
+ * @package    gradeexport_extended
+ * @since      Moodle 3.2
+ * @copyright  2016 Zane Karl <zkarl@oid.ucla.edu>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class provider implements \core_privacy\local\metadata\null_provider {
-
-    /**
-     * Get the language string identifier with the component's language
-     * file to explain why this plugin stores no data.
-     *
-     * @return  string
-     */
-    public static function get_reason() : string {
-        return 'privacy:metadata';
-    }
+class grade_exported extends \core\event\grade_exported {
 }

@@ -1,4 +1,5 @@
 <?php
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -14,155 +15,57 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Main entry point
- *
- * @package   gradeexport_checklist
- * @copyright 2010 Davo Smith
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
+require_once '../../../config.php';
+require_once $CFG->dirroot.'/grade/export/lib.php';
+require_once 'grade_export_extended.php';
 
-require_once(__DIR__.'/../../../config.php');
-global $CFG, $PAGE, $DB, $CFG;
-require_once($CFG->dirroot.'/grade/lib.php');
+$id = required_param('id', PARAM_INT); // course id
 
-$courseid = required_param('id', PARAM_INT);
+$PAGE->set_url('/grade/export/extended/index.php', array('id'=>$id));
 
-$PAGE->set_url(new moodle_url('/grade/export/checklist/index.php', array('id' => $courseid)));
-if (!$course = $DB->get_record('course', array('id' => $courseid))) {
-    throw new moodle_exception('nocourseid');
+if (!$course = $DB->get_record('course', array('id'=>$id))) {
+    print_error('invalidcourseid');
 }
 
-require_login($course->id);
-$context = context_course::instance($course->id);
-$PAGE->set_context($context);
+require_login($course); //$course->fullname for the string of the name
+$context = context_course::instance($id);
 
-require_capability('gradeexport/checklist:view', $context);
-$viewall = has_capability('gradeexport/checklist:viewall', $context);
-$viewdistrict = has_capability('gradeexport/checklist:viewdistrict', $context);
-if (!$viewall && !$viewdistrict) {
-    throw new moodle_exception('nopermission', 'gradeexport_checklist');
+require_capability('moodle/grade:export', $context);
+require_capability('gradeexport/extended:view', $context);
+
+print_grade_page_head($COURSE->id, 'export', 'extended', get_string('exportto', 'grades') . ' ' . get_string('pluginname', 'gradeexport_extended'));
+export_verify_grades($COURSE->id);
+
+if (!empty($CFG->gradepublishing)) {
+    $CFG->gradepublishing = has_capability('gradeexport/extended:publish', $context);
 }
 
-// Build navigation.
-$strgrades = get_string('grades');
-$strchkgrades = get_string('pluginname', 'gradeexport_checklist');
+$actionurl = new moodle_url('/grade/export/extended/export.php');
+// The option 'idnumberrequired' excludes grade items that dont have an ID to use during import.
+$formoptions = array(
+    'idnumberrequired' => true,
+    'updategradesonly' => true,
+    'publishing' => true,
+    'simpleui' => true,
+    'multipledisplaytypes' => false
+);
 
-print_grade_page_head($COURSE->id, 'export', 'checklist', $strchkgrades);
+$mform = new grade_export_form($actionurl, $formoptions);
 
-// Get list of appropriate checklists.
-$modinfo = get_fast_modinfo($course);
-$checklists = $modinfo->get_instances_of('checklist');
-
-if (empty($checklists)) {
-    echo '<div class="alert alert-info">'.get_string('nochecklists', 'gradeexport_checklist').'</div>';
+$groupmode    = groups_get_course_groupmode($course);   // Groups are being used.
+$currentgroup = groups_get_course_group($course, true);
+if (($groupmode == SEPARATEGROUPS) &&
+    (!$currentgroup) &&
+    (!has_capability('moodle/site:accessallgroups', $context))) {
+    echo $OUTPUT->heading(get_string("notingroup"));
     echo $OUTPUT->footer();
-    die();
+    die;
 }
 
-// Get list of districts.
-if ($DB->get_record('user_info_field', array('shortname' => 'district'))) {
-    if (!$viewall) {
-        $sql = "SELECT ud.data AS district FROM {user_info_data} ud, {user_info_field} uf ";
-        $sql .= "WHERE ud.fieldid = uf.id AND uf.shortname = 'district' AND ud.userid = ?";
-        $district = $DB->get_record_sql($sql, array($USER->id));
+groups_print_course_menu($course, 'index.php?id='.$id);
+echo '<div class="clearer"></div>';
 
-        if ($district) {
-            $districts = array($district->district);
-        } else {
-            $districts = array(get_string('nodistrict', 'gradeexport_checklist'));
-        }
-
-    } else {
-        $sql = "SELECT DISTINCT ud.data AS district FROM {user_info_data} ud, {user_info_field} uf ";
-        $sql .= "WHERE ud.fieldid = uf.id AND uf.shortname = 'district'";
-        $districts = $DB->get_records_sql($sql, array());
-
-        $districts = array_keys($districts);
-    }
-} else {
-    $districts = false;
-}
-
-// Get list of groups.
-$groupsmenu = array();
-$groupsmenu[0] = get_string('allparticipants'); // Always available - only exports groups user has access to.
-if ($course->groupmode == VISIBLEGROUPS || has_capability('moodle/site:accessallgroups', $context)) {
-    $allowedgroups = groups_get_all_groups($course->id);
-} else {
-    $allowedgroups = groups_get_all_groups($course->id, $USER->id);
-}
-
-if ($allowedgroups) {
-    foreach ($allowedgroups as $group) {
-        $groupsmenu[$group->id] = format_string($group->name);
-    }
-}
-
-echo "<br /><div class=\"checklist_export_options\">";
-echo "<form action='{$CFG->wwwroot}/grade/export/checklist/export.php' method='post'>";
-
-echo '<label for="choosechecklist">'.get_string('choosechecklist', 'gradeexport_checklist').':</label> '.
-    '<select id="choosechecklist" name="choosechecklist">';
-$selected = ' selected="selected" ';
-foreach ($checklists as $checklist) {
-    if (!$checklist->deletioninprogress) {
-        echo "<option $selected value='{$checklist->instance}'>{$checklist->get_formatted_name()}</option>";
-        $selected = '';
-    }
-}
-echo '</select><br/>';
-
-if ($districts) {
-    echo '<label for="choosedistrict">'.get_string('choosedistrict', 'gradeexport_checklist').
-        ':</label> <select id="choosedistrict" name="choosedistrict">';
-    if ($viewall) {
-        echo '<option selected="selected" value="ALL">'.get_string('alldistrict', 'gradeexport_checklist').'</option>';
-        $selected = '';
-    } else {
-        $selected = ' selected="selected" ';
-    }
-    foreach ($districts as $district) {
-        echo "<option $selected value='{$district}'>{$district}</option>";
-        $selected = '';
-    }
-    echo '</select><br/>';
-}
-
-if (count($groupsmenu) === 1) {
-    $groupname = reset($groupsmenu);
-    echo '<input type="hidden" name="group" value="'.key($groupsmenu).'" />';
-} else {
-    echo '<label for="group">'.get_string('group').':</label> <select id="group" name="group">';
-    $selected = ' selected="selected" ';
-    foreach ($groupsmenu as $groupid => $groupname) {
-        echo "<option $selected value='{$groupid}'>$groupname</option>";
-        $selected = '';
-    }
-    echo '</select><br/>';
-}
-
-echo '<label for="exportoptional">'.get_string('exportoptional', 'gradeexport_checklist').
-    ':</label> <select id="exportoptional" name="exportoptional">';
-echo '<option selected="selected" value="1">'.get_string('yes').'</option>';
-echo '<option value="0">'.get_string('no').'</option>';
-echo '</select><br/>';
-
-echo '<label for="percentcol">'.get_string('percentcol', 'gradeexport_checklist').':</label> ';
-echo '<input type="checkbox" name="percentcol" id="percentcol" checked="checked" /> ';
-echo get_string('percentcol2', 'gradeexport_checklist').'<br/>';
-echo '<label for="percentrow">'.get_string('percentrow', 'gradeexport_checklist').':</label> ';
-echo '<input type="checkbox" name="percentrow" id="percentrow" /> ';
-echo get_string('percentrow2', 'gradeexport_checklist').'<br/>';
-echo '<label for="percentheadings">'.get_string('percentheadings', 'gradeexport_checklist').':</label> ';
-echo '<input type="checkbox" name="percentheadings" id="percentheadings" /> ';
-echo get_string('percentheadings2', 'gradeexport_checklist').'<br/><br/>';
-
-echo '<input type="hidden" name="id" value="'.$course->id.'" />';
-
-echo '<input type="submit" name="export" value="'.get_string('export', 'gradeexport_checklist').'" />';
-
-echo '</form></div>';
+$mform->display();
 
 echo $OUTPUT->footer();
 

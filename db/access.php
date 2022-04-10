@@ -15,51 +15,29 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Capability definitions
+ * Capabilities gradeexport plugin.
  *
- * @package   gradeexport_checklist
- * @copyright 2010 Davo Smith
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    gradeexport_extended
+ * @copyright  2022 TWINGSISTER twingsister@gmail.com
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = array(
 
-    'gradeexport/checklist:view' => array(
+    'gradeexport/extended:view' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
-        'legacy' => array(
+        'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         )
     ),
 
-    'gradeexport/checklist:viewall' => array(
-        'riskbitmask' => RISK_PERSONAL,
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_COURSE,
-        'legacy' => array(
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
-        )
-    ),
-
-    'gradeexport/checklist:viewdistrict' => array(
-        'riskbitmask' => RISK_PERSONAL,
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_COURSE,
-        'legacy' => array(
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-            'manager' => CAP_ALLOW
-        )
-    ),
-
-    'gradeexport/checklist:publish' => array(
+    'gradeexport/extended:publish' => array(
         'riskbitmask' => RISK_PERSONAL,
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
@@ -69,3 +47,5 @@ $capabilities = array(
     )
 
 );
+
+

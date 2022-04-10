@@ -1,4 +1,5 @@
 <?php
+
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -15,16 +16,15 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version details
+ * Strings for component 'gradeexport_extended 'en', branch 'MOODLE_20_STABLE'
  *
- * @package    gradeexport
- * @subpackage extended
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package   gradeexport_extended
+ * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2022031303;        // The current plugin version (Date: YYYYMMDDXX)
-$plugin->requires  = 2019051100;        // Requires this Moodle version
-$plugin->component = 'gradeexport_extended'; // Full name of the plugin (used for diagnostics)
+$string['eventgradeexported'] = 'Extended grade exported';
+$string['pluginname'] = 'Extended file';
+$string['privacy:metadata'] = 'The Extended file grade export plugin does not store any personal data.';
+$string['extended:publish'] = 'Publish Extended grade export';
+$string['extended:view'] = 'Use Extended grade export';
