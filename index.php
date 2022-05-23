@@ -64,7 +64,10 @@ if (($groupmode == SEPARATEGROUPS) &&
 
 groups_print_course_menu($course, 'index.php?id='.$id);
 echo '<div class="clearer"></div>';
-
+global $CFG;
+$urlclean = new moodle_url($CFG->wwwroot .'/grade/export/extended/ggb_dumper.php',
+           array('fname' => "CLEAN",'id' => $id,'count'=> 0) );
+echo '<a href="'.$urlclean.'"><button>Clean Dumps</button></a>';
 $mform->display();
 
 echo $OUTPUT->footer();

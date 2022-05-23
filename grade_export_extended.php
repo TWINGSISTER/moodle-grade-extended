@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+require_once($CFG->dirroot.'/mod/geogebra/archivelib.php');
 require_once($CFG->dirroot.'/grade/export/lib.php');
 require_once($CFG->dirroot.'/lib/pagelib.php'); 
+require_once($CFG->dirroot.'/lib/weblib.php'); 
 require_once($CFG->dirroot.'/lib/outputcomponents.php');
 //require_once($CFG->dirroot.'/grade/export/extended/repeteable_moodle_page.php');
 require_once($CFG->libdir.'/filelib.php');
@@ -28,6 +30,9 @@ function pagekey(){
 }
 
 global $BASEPAGE,$BASEOUTPUTPG,$WHITEPAGE,$WHITEOUTPUTPG;
+
+
+
 function getWhitePaper(){
     global $pgkey,$PAGE,$OUTPUT,$WHITEPAGE,$WHITEOUTPUTPG;
     $WHITEPAGE = clone $PAGE;
@@ -49,10 +54,6 @@ function restorePaper(){
     $PAGE = clone $BASEPAGE;
     $pgkey->setValue($OUTPUT, clone $BASEOUTPUTPG);
 }
-function filterDOM($s){
-    preg_match("/<body[^>]*>(.*?)<\/body>/is", $s, $matches);
-   return $matches[1];
-}
 function filterDOMsec($s){
     preg_match("/<section id=\"region-main\"[^>]*>(.*?)<\/section>/is", $s, $matches);
     return "<div id='page-content' class='row pb-3'>".
@@ -61,14 +62,17 @@ function filterDOMsec($s){
     $matches[1].
     "</section></div></div>";
 }
-/*function filterDOMReg($s){
-    $dom = new DomDocument();
-    $dom->loadHTML($s);
-    $body = $dom->getElementsByTagName('body');
-    //$body = $body->item(0);
-    //return  $dom->saveHTML();
-    return $matches[1];
-}*/
+
+function mustDump($idnum,$gtree,$itemsel){
+    $i=0;
+    foreach ($gtree->items as $key => $props) {
+        if($props->idnumber==$idnum){$i=$key;}
+    }
+    if($i && $itemsel[$i]) { // skip even members
+        return true;
+    }
+    return false;
+}
 
 class grade_export_extended extends grade_export {
     //$grade_items; // list of all course grade items
@@ -83,7 +87,7 @@ class grade_export_extended extends grade_export {
      * @return string
      */
     public function print_grades($feedback = false) {
-        global $CFG,$pgkey,$PAGE,$OUTPUT,$COURSE;
+        global $CFG,$pgkey,$PAGE,$OUTPUT,$COURSE,$dumped;
         require_once($CFG->libdir.'/filelib.php');
         require_once($CFG->dirroot.'/grade/lib.php');
         require_once($CFG->dirroot.'/lib/modinfolib.php');
@@ -97,189 +101,110 @@ class grade_export_extended extends grade_export {
         $shortname = format_string($this->course->shortname, true, array('context' => context_course::instance($this->course->id)));
         //here is the filename
         $archid=$shortname." ".$timedump;
-        $PAGE->set_title($archid);
-        $PAGE->requires->js(new moodle_url($CFG->wwwroot .'/grade/export/extended/extended_view.js'));
-        
-        //$PAGE->set_heading($archid);
-        
-        //make_temp_directory($archid);
-        //$tempfilename = $CFG->tempdir .'/gradeexport/'. md5(sesskey().microtime().$downloadfilename);
-        //$tempfilename = "$CFG->tempdir/$archid/$archid.html";
-        //if (!$handle = fopen($tempfilename, 'w+b')) {
-        //    print_error('cannotcreatetempdir');
-        //}
-        
-        // $handle a file to go
-        /// time stamp to ensure uniqueness of batch export
-        //fwrite($handle,  '<results batch="extended_export_'.time().'">'."\n"); 
-
-        //$export_buffer = array();
-        // get all the items
-        //$alltheitems = $this->grade_items;// all the exercises with grades in this course
-      
-        //global $CFG, $COURSE,$PAGE,$OUTPUT;
+        //global $CFG;
         //$switch = grade_get_setting($COURSE->id, 'aggregationposition', $CFG->grade_aggregationposition);
         //$gseq = new grade_seq($COURSE->id, $switch);
-        //$gtree = new grade_tree($COURSE->id);
+        $gtree = new grade_tree($COURSE->id);
         //$gstruct = new grade_structure();
+        $PAGE->set_title($archid);
+        $PAGE->requires->js(new moodle_url($CFG->wwwroot .'/grade/export/extended/extended_view.js'));
         $insta=get_fast_modinfo($COURSE->id)->get_instances();
+        $itemsel = required_param_array('itemids', PARAM_INT); // course id
         $quiz=$insta['quiz'];
-        echo $OUTPUT->header();
-        echo $OUTPUT->heading($archid);
+        
+        $head1=$OUTPUT->header();
+        echo $head1;
+        $head2= $OUTPUT->heading($archid);
+        echo $head2;
+        $indexpage=$head1.$head2;
         $prefooter = $OUTPUT->footer();
-        //echo '<form id="geogebra_form" method="POST" action="attempt.php">';
-        //$BASEOUTPUT = serialize($OUTPUT);
-        //$BASEOUTPUT->page = clone $OUTPUT->page;
+        //$quiz=$insta['quiz'];
+        $indexpage="";
         foreach ($quiz as $key => $props) {
-          // echo $itemidgrd, 
-                  //  $gradeitmdata->courseid,
-                 //   $gradeitmdata->id,
-                 //   $gradeitmdata->itemmodule,//geogebra or quiz
-                 //   $gradeitmdata->itemname;
-                    //if($gradeitmdata->itemmodule==="quiz"){ 
-                       //$_SERVER['QUERY_STRING'] = 
-                        //$reflectionProperty = new \ReflectionProperty(moodle_page::class, '_state');
-                        //$reflectionProperty->setAccessible(true);
-                        //$reflectionProperty->setValue($PAGE, 0);
-                        storePaper();
-                        setWhitePaper();
-                        //$PAGE = clone $BASEPAGE;
-                        //$pgkey->setValue($OUTPUT, clone $BASEOUTPUTPG);
-                            //= unserialize($BASEOUTPUT);
-                        //$OUTPUT->page = clone $BASEOUTPUT->page;
-                        $itemidgrd = $props->id;
-                        $_GET['id']=$itemidgrd;
-                        $_POST['id']=$itemidgrd;// to trick Moodle function optional_param
-                        $_GET['mode']="archive";
-                        $_POST['mode']="archive";
-                        global $DB;
-                        $_SERVER['DOCUMENT_ROOT'] =$CFG->dirroot.'/mod/quiz/';
-                        chdir($CFG->dirroot.'/mod/quiz/');
-                        ob_start();
-                        include($CFG->dirroot.'/mod/quiz/report.php');
-                        $s = ob_get_contents();
-                        ob_end_clean();
-                        //$downloadfilename = clean_filename("$shortname$strgrades.html");
-                        restorePaper();
-                        //fwrite($handle, 
-                        //echo "<p id='$archid$props->name'></p>";
-                        //echo "<script>addPageQuiz('$archid$props->name','FOO');</script>";
-                        //);
-                        echo filterDOMsec($s);
-                        // $PAGE->_state = 0;
-                        /*$PAGE-> __set=
-                        Closure::bind(function ($name, $value) {
-                            global $PAGE;
-                            if ($name =='state') {$PAGE->_state = $value;return;}
-                            if (method_exists($this, 'set_' . $name)) {
-                                throw new $PAGE->coding_exception('Invalid attempt to modify page object', "Use \$PAGE->set_$name() instead.");
-                            } else {
-                                throw new $PAGE->coding_exception('Invalid attempt to modify page object', "Unknown property $name");
-                            }
-                        }, $PAGE);
-                        $PAGE->set_state = Closure::bind(function ($s) {
-                            // here the object scope was gone...
-                            global $PAGE;
-                            $PAGE->_state = $s;
-                        }, $PAGE);
-                         $PAGE->set_state($PAGE->STATE_BEFORE_HEADER);
-                         $PAGE->_state=($PAGE->STATE_BEFORE_HEADER);
-                        */
-                        //http://localhost/moodle/mod/quiz/report.php?id=13&mode=archive
-                        
-                        /* $ch = curl_init();
-                        curl_setopt($ch, CURLOPT_URL, $CFG->dirroot. "/mod/quiz/report.php?id=$itemidgrd&mode=archive");
-                        //curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-                        session_write_close();
-                        $result = curl_exec ($ch);
-                        curl_close ($ch);
-                        session_start();*/
-                    //}
-                    
-                  
-                    
+         $itemidgrd = $props->id;
+         $idnum =$props->idnumber;
+         if(!mustDump($idnum,$gtree,$itemsel)){continue;}
+         storePaper();
+         setWhitePaper();
+         $_GET['id']=$itemidgrd;
+         $_POST['id']=$itemidgrd;// to trick Moodle function optional_param
+         $_GET['mode']="archive";
+         $_POST['mode']="archive";
+         global $DB;
+         $_SERVER['DOCUMENT_ROOT'] =$CFG->dirroot.'/mod/quiz/';
+         chdir($CFG->dirroot.'/mod/quiz/');
+         ob_start();
+         include($CFG->dirroot.'/mod/quiz/report.php');
+         $s = ob_get_contents();
+         ob_end_clean();
+         restorePaper();
+         $thispage= filterDOMsec($s);
+         echo $thispage;
+         $indexpage=$indexpage.$thispage;        
+         //echo filterDOMsec($s);
         }
-        /*
-        $geub = new grade_export_update_buffer();
-        $gui = new graded_users_iterator($this->course, $this->columns, $this->groupid);
-        $gui->require_active_enrolment($this->onlyactive);
-        $gui->init();
-        while ($userdata = $gui->next_user()) {
-            // match one user that must have a idnumber set in the profile
-            $user = $userdata->user;
-
-            if (empty($user->idnumber)) {
-                //id number must exist otherwise we cant match up students when importing
-                continue;
-            }
-
-            // studentgrades[] index should match with corresponding $index
-            foreach ($userdata->grades as $itemid => $grade) {
-                $grade_item = $this->grade_items[$itemid];
-                $grade->grade_item =& $grade_item;
-
-                // MDL-11669, skip exported grades or bad grades (if setting says so)
-                if ($export_tracking) {
-                    $status = $geub->track($grade);
-                    if ($this->updatedgradesonly && ($status == 'nochange' || $status == 'unknown')) {
-                        continue;
-                    }
-                }
-
-               // fwrite($handle,  "\t<result>\n");
-
-                if ($export_tracking) {
-                    fwrite($handle,  "\t\t<state>$status</state>\n");
-                }
-
-                // only need id number
-                fwrite($handle,  "\t\t<assignment>{$grade_item->idnumber}</assignment>\n");
-                // this column should be customizable to use either student id, idnumber, uesrname or email.
-                fwrite($handle,  "\t\t<student>{$user->idnumber}</student>\n");
-                // Format and display the grade in the selected display type (real, letter, percentage).
-                if (is_array($this->displaytype)) {
-                    // Grades display type came from the return of export_bulk_export_data() on grade publishing.
-                    foreach ($this->displaytype as $gradedisplayconst) {
-                        $gradestr = $this->format_grade($grade, $gradedisplayconst);
-                        fwrite($handle,  "\t\t<score>$gradestr</score>\n");
-                    }
-                } else {
-                    // Grade display type submitted directly from the grade export form.
-                    $gradestr = $this->format_grade($grade, $this->displaytype);
-                    fwrite($handle,  "\t\t<score>$gradestr</score>\n");
-                }
-
-                if ($this->export_feedback) {
-                    $feedbackstr = $this->format_feedback($userdata->feedbacks[$itemid], $grade);
-                    fwrite($handle,  "\t\t<feedback>$feedbackstr</feedback>\n");
-                }
-                //fwrite($handle,  "\t</result>\n");
-            }
+        $ggb=$insta['geogebra'];
+        remove_dir($CFG->tempdir."/".tempfolderggbs());
+        $dumped=0;
+        
+        foreach ($ggb as $key => $props) {
+            $itemidgrd = $props->id;
+            $idnum =$props->idnumber;
+            if(!mustDump($idnum,$gtree,$itemsel)){continue;}
+            storePaper();
+            setWhitePaper();
+            $_GET['id']=$itemidgrd;
+            $_POST['id']=$itemidgrd;// to trick Moodle function optional_param
+            //$_GET['cid']=$COURSE->id;
+            //$_POST['cid']=$COURSE->id;
+            $_POST['timedump']=$timedump;
+            $_POST['courseshortname']=$shortname;
+            $_POST['testname']=$props->name; 
+            global $DB;
+            $_SERVER['DOCUMENT_ROOT'] =$CFG->dirroot.'/mod/geogebra/';
+            chdir($CFG->dirroot.'/mod/geogebra/');
+            ob_start();
+            include($CFG->dirroot.'/mod/geogebra/archive.php');
+            $s = ob_get_contents();
+            ob_end_clean();
+            restorePaper();
+            $thispage= filterDOMsec($s);
+            echo $thispage;
+            $indexpage=$indexpage.$thispage;
         }
-        //fwrite($handle,  "</results>");
-        fclose($handle);
-        $gui->close();
-        $geub->close();
-
-        if (defined('BEHAT_SITE_RUNNING')) {
-            // If behat is running, we cannot test the output if we force a file download.
-            include($tempfilename);
-        } else {
-            @header("Content-type: text/xml; charset=UTF-8");
-            send_temp_file($tempfilename, $downloadfilename, false);
-        }*/
-        //$PAGE = clone $BASEPAGE;
-        //$pgkey->setValue($OUTPUT, clone $BASEOUTPUTPG);
-        //$PAGE->requires->js('/grade/export/extended/extended_view.js');
-        //fclose($handle);
-        //include($tempfilename);
-        //$output = $PAGE->get_renderer('tool_demo');
+        //$url=new moodle_url($CFG->wwwroot .'/grade/export/extended/ggb_dumper.php',
+       //     array('id' => $this->course->id,'count'=> $dumped));
         
+//        echo '<script>window.onload = function() {dump_screenshots("'.tempfolderggbs().'");} </script>';
+        // now dumps all the screenshots for this
+        $dumps='<script>window.onload = function() {debugger;RT_dump_screenshots(';
+        for ($i = 1; $i <= $dumped; $i++) {
+            $url = new moodle_url($CFG->wwwroot .'/grade/export/extended/ggb_dumper.php',
+                array('id' => $this->course->id,'count'=> $i));
+                $dumps= $dumps.'"'.$url->out(false).'",';
+                 
+        }
+ //       $urlclean = new moodle_url($CFG->wwwroot .'/grade/export/extended/ggb_dumper.php',
+ //           array('fname' => "CLEAN",'id' => $this->course->id,'count'=> $i) );
+ //       $fetchcode='fetch(".$urlclean.");';    
+        echo $dumps.strval($dumped).');'.
+ //       'window.focus();alert("cleaner");debugger;'.
+ //       'let clean = confirm("Clean dumps?");'.
+ //       'if (clean){'.$fetchcode.'}'.
+        '}</script>';
         
-        //$renderable = new \tool_demo\output\index_page('Some text');
-        //echo $output->render($renderable);
+            
+            //.$url.'",'.strval($dumped).');} </script>';
         
         echo $prefooter; 
+        //$indexpage=$indexpage.$prefooter;
+        //header('Content-Disposition: attachment; filename="sample.txt"');
+        //header('Content-Type: text/plain'); # Don't use application/force-download - it's not a real MIME type, and the Content-Disposition header is sufficient
+        //header('Content-Length: ' . strlen($indexpage));
+        //header('Connection: close');
+        //echo $indexpage;
+        
+       
     }
 }
 
