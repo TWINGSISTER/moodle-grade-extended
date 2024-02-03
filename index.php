@@ -33,7 +33,9 @@ $context = context_course::instance($id);
 require_capability('moodle/grade:export', $context);
 require_capability('gradeexport/extended:view', $context);
 
-print_grade_page_head($COURSE->id, 'export', 'extended', get_string('exportto', 'grades') . ' ' . get_string('pluginname', 'gradeexport_extended'));
+print_grade_page_head($COURSE->id, 'export', 'extended', get_string('exportto', 'grades') . ' ' . get_string('pluginname', 'gradeexport_extended'),
+false, false, true, null, null, null, $actionbar);
+
 export_verify_grades($COURSE->id);
 
 if (!empty($CFG->gradepublishing)) {
@@ -43,8 +45,7 @@ if (!empty($CFG->gradepublishing)) {
 $actionurl = new moodle_url('/grade/export/extended/export.php');
 // The option 'idnumberrequired' excludes grade items that dont have an ID to use during import.
 $formoptions = array(
-    'idnumberrequired' => true,
-    'updategradesonly' => true,
+    'includeseparator'=>true,
     'publishing' => true,
     'simpleui' => true,
     'multipledisplaytypes' => false
